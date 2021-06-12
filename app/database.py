@@ -1,6 +1,7 @@
 import logging
 from contextlib import contextmanager
 from typing import List
+
 from psycopg2 import pool
 from psycopg2.extensions import AsIs, ISQLQuote, adapt
 
@@ -44,7 +45,8 @@ class MirrorMessage:
         _mirror_id = adapt(self.mirror_id).getquoted().decode('utf-8')
         _mirror_channel = adapt(
             self.mirror_channel).getquoted().decode('utf-8')
-        return AsIs(f'{_original_id}, {_original_channel}, {_mirror_id}, {_mirror_channel}')
+        return AsIs(
+            f'{_original_id}, {_original_channel}, {_mirror_id}, {_mirror_channel}')
 
 
 class Database:
@@ -63,7 +65,8 @@ class Database:
     MIN_CONN = 2
     MAX_CONN = 10
 
-    def __init__(self, connection_string: str, min_conn: int = MIN_CONN, max_conn: int = MAX_CONN):
+    def __init__(self, connection_string: str, min_conn: int = MIN_CONN,
+                 max_conn: int = MAX_CONN):
         self.connection_string = connection_string
         self.connection_pool = pool.SimpleConnectionPool(
             min_conn, max_conn, self.connection_string)
@@ -124,7 +127,8 @@ class Database:
             else:
                 connection.commit()
 
-    def find_by_original_id(self, original_id: int, original_channel: int) -> List[MirrorMessage]:
+    def find_by_original_id(self, original_id: int, original_channel: int) -> \
+            List[MirrorMessage]:
         """Finds MirrorMessage objects with original_id and original_channel values
 
         Args:

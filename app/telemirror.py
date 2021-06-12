@@ -4,18 +4,20 @@ import time
 from telethon import events
 from telethon.sessions import StringSession
 from telethon.sync import TelegramClient
-from telethon.tl.types import InputMediaPoll, MessageMediaPoll, MessageEntityTextUrl
+from telethon.tl.types import \
+    InputMediaPoll, \
+    MessageMediaPoll, \
+    MessageEntityTextUrl
 
 from database import Database, MirrorMessage
 from settings import (API_HASH, API_ID, CHANNEL_MAPPING, CHATS, DB_URL,
-                      LIMIT_TO_WAIT, LOG_LEVEL, REMOVE_URLS, SESSION_STRING,
+                      LIMIT_TO_WAIT, LOG_LEVEL, SESSION_STRING,
                       TIMEOUT_MIRRORING)
 from utils import remove_urls
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(level=LOG_LEVEL)
-
 
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 db = Database(DB_URL)
@@ -52,7 +54,8 @@ async def handler_album(event):
             original_idxs.append(item.id)
         sent = 0
         for chat in targets:
-            mirror_messages = await client.send_file(chat, caption=caps, file=files)
+            mirror_messages = await client.send_file(chat, caption=caps,
+                                                     file=files)
             if mirror_messages is not None and len(mirror_messages) > 1:
                 for idx, m in enumerate(mirror_messages):
                     db.insert(MirrorMessage(original_id=original_idxs[idx],
@@ -86,9 +89,9 @@ async def handler_new_message(event):
         for chat in targets:
             mirror_message = None
             if isinstance(event.message.media, MessageMediaPoll):
-                mirror_message = await client.forward_messages(chat,
-                                                               file=InputMediaPoll(
-                                                                   poll=event.message.media.poll))
+                mirror_message = await client.forward_messages(
+                    chat, file=InputMediaPoll(poll=event.message.media.poll)
+                )
             else:
                 mirror_message = await client.forward_messages(chat,
                                                                event.message)
