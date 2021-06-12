@@ -22,11 +22,11 @@ db = Database(DB_URL)
 
 
 def remove_url_from_message(message):
-    # message.message = remove_urls(message.message)
-    # if message.entities is not None:
-    #     for e in message.entities:
-    #         if isinstance(e, MessageEntityTextUrl):
-    #             e.url = remove_urls(e.url)
+    message.message = remove_urls(message.message)
+    if message.entities is not None:
+        for e in message.entities:
+            if isinstance(e, MessageEntityTextUrl):
+                e.url = remove_urls(e.url)
     return message
 
 
@@ -47,8 +47,6 @@ async def handler_album(event):
         # original messages ids
         original_idxs = []
         for item in event.messages:
-            if REMOVE_URLS:
-                item = remove_url_from_message(item)
             files.append(item.media)
             caps.append(item.message)
             original_idxs.append(item.id)
@@ -83,8 +81,7 @@ async def handler_new_message(event):
             logger.warning(
                 f'NewMessage. No target channel for {event.chat_id}')
             return
-        if REMOVE_URLS:
-            event.message = remove_url_from_message(event.message)
+
         sent = 0
         for chat in targets:
             mirror_message = None
@@ -121,8 +118,7 @@ async def handler_edit_message(event):
             logger.warning(
                 f'MessageEdited. No target channel for {event.chat_id}')
             return
-        if REMOVE_URLS:
-            event.message = remove_url_from_message(event.message)
+
         sent = 0
         for chat in targets:
             await client.forward_messages(chat.mirror_channel, event.message)
