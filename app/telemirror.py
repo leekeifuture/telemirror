@@ -22,11 +22,11 @@ db = Database(DB_URL)
 
 
 def remove_url_from_message(message):
-    message.message = remove_urls(message.message)
-    if message.entities is not None:
-        for e in message.entities:
-            if isinstance(e, MessageEntityTextUrl):
-                e.url = remove_urls(e.url)
+    # message.message = remove_urls(message.message)
+    # if message.entities is not None:
+    #     for e in message.entities:
+    #         if isinstance(e, MessageEntityTextUrl):
+    #             e.url = remove_urls(e.url)
     return message
 
 
@@ -89,10 +89,12 @@ async def handler_new_message(event):
         for chat in targets:
             mirror_message = None
             if isinstance(event.message.media, MessageMediaPoll):
-                mirror_message = await client.send_message(chat,
-                                                           file=InputMediaPoll(poll=event.message.media.poll))
+                mirror_message = await client.forward_messages(chat,
+                                                               file=InputMediaPoll(
+                                                                   poll=event.message.media.poll))
             else:
-                mirror_message = await client.send_message(chat, event.message)
+                mirror_message = await client.forward_messages(chat,
+                                                               event.message)
 
             if mirror_message is not None:
                 db.insert(MirrorMessage(original_id=event.message.id,
@@ -123,7 +125,7 @@ async def handler_edit_message(event):
             event.message = remove_url_from_message(event.message)
         sent = 0
         for chat in targets:
-            await client.edit_message(chat.mirror_channel, chat.mirror_id, event.message.message)
+            await client.forward_messages(chat.mirror_channel, event.message)
             sent += 1
             if sent > LIMIT_TO_WAIT:
                 sent = 0
