@@ -1,4 +1,3 @@
-import re
 from os import environ
 
 from dotenv import load_dotenv
@@ -23,23 +22,7 @@ API_ID = environ.get('API_ID')
 # telegram app hash
 API_HASH = environ.get('API_HASH')
 
-# channels id to mirroring
-CHATS = []
-
-# channels mapping
-# [source:target1,target2];[source2:...]
-CM = environ.get('CHAT_MAPPING')
-CHANNEL_MAPPING = {}
-if CM is not None:
-    matches = re.findall(
-        r'\[?((?:-100\d+,?)+):((?:-100\d+,?)+)\]?', CM, re.MULTILINE)
-    for match in matches:
-        sources = [int(val) for val in match[0].split(',')]
-        targets = [int(val) for val in match[1].split(',')]
-        for source in sources:
-            CHANNEL_MAPPING.setdefault(source, []).extend(targets)
-    CHATS = list(CHANNEL_MAPPING.keys())
-
+TARGET = int(environ.get('TARGET')) if environ.get('TARGET') else None
 TIMEOUT_MIRRORING = float(environ.get('TIMEOUT_MIRRORING', '0.1'))
 # amount messages before timeout
 LIMIT_TO_WAIT = 50

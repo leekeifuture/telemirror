@@ -10,9 +10,9 @@ from telethon.tl.types import \
     MessageEntityTextUrl
 
 from database import Database, MirrorMessage
-from settings import (API_HASH, API_ID, CHANNEL_MAPPING, CHATS, DB_URL,
+from settings import (API_HASH, API_ID, DB_URL,
                       LIMIT_TO_WAIT, LOG_LEVEL, SESSION_STRING,
-                      TIMEOUT_MIRRORING)
+                      TIMEOUT_MIRRORING, TARGET)
 from utils import remove_urls
 
 logging.basicConfig()
@@ -32,15 +32,17 @@ def remove_url_from_message(message):
     return message
 
 
-@client.on(events.Album(chats=CHATS))
+@client.on(events.Album())
 async def handler_album(event):
     """Album event handler.
     """
     try:
         logger.debug(f'New Album from {event.chat_id}:\n{event}')
-        targets = CHANNEL_MAPPING.get(event.chat_id)
-        if targets is None or len(targets) < 1:
-            logger.warning(f'Album. No target channel for {event.chat_id}')
+
+        if TARGET is None:
+            logger.warning(
+                f'Album. No target channel for {event.chat_id}'
+            )
             return
         # media
         files = []
@@ -53,24 +55,25 @@ async def handler_album(event):
             caps.append(item.message)
             original_idxs.append(item.id)
         sent = 0
-        for chat in targets:
-            mirror_messages = await client.send_file(chat, caption=caps,
-                                                     file=files)
-            if mirror_messages is not None and len(mirror_messages) > 1:
-                for idx, m in enumerate(mirror_messages):
-                    db.insert(MirrorMessage(original_id=original_idxs[idx],
-                                            original_channel=event.chat_id,
-                                            mirror_id=m.id,
-                                            mirror_channel=chat))
-            sent += 1
-            if sent > LIMIT_TO_WAIT:
-                sent = 0
-                time.sleep(TIMEOUT_MIRRORING)
+
+        mirror_messages = await client.send_file(TARGET, caption=caps,
+                                                 file=files)
+        if mirror_messages is not None and len(mirror_messages) > 1:
+            for idx, m in enumerate(mirror_messages):
+                db.insert(MirrorMessage(original_id=original_idxs[idx],
+                                        original_channel=event.chat_id,
+                                        mirror_id=m.id,
+                                        mirror_channel=TARGET))
+        sent += 1
+        if sent > LIMIT_TO_WAIT:
+            sent = 0
+            time.sleep(TIMEOUT_MIRRORING)
+
     except Exception as e:
         logger.error(e, exc_info=True)
 
 
-@client.on(events.NewMessage(chats=CHATS))
+@client.on(events.NewMessage())
 async def handler_new_message(event):
     """NewMessage event handler.
     """
@@ -79,38 +82,38 @@ async def handler_new_message(event):
         return
     try:
         logger.debug(f'New message from {event.chat_id}:\n{event.message}')
-        targets = CHANNEL_MAPPING.get(event.chat_id)
-        if targets is None or len(targets) < 1:
+
+        if TARGET is None:
             logger.warning(
-                f'NewMessage. No target channel for {event.chat_id}')
+                f'NewMessage. No target channel for {event.chat_id}'
+            )
             return
 
         sent = 0
-        for chat in targets:
-            mirror_message = None
-            if isinstance(event.message.media, MessageMediaPoll):
-                mirror_message = await client.forward_messages(
-                    chat, file=InputMediaPoll(poll=event.message.media.poll)
-                )
-            else:
-                mirror_message = await client.forward_messages(chat,
-                                                               event.message)
 
-            if mirror_message is not None:
-                db.insert(MirrorMessage(original_id=event.message.id,
-                                        original_channel=event.chat_id,
-                                        mirror_id=mirror_message.id,
-                                        mirror_channel=chat))
-            sent += 1
-            if sent > LIMIT_TO_WAIT:
-                sent = 0
-                time.sleep(TIMEOUT_MIRRORING)
+        if isinstance(event.message.media, MessageMediaPoll):
+            mirror_message = await client.forward_messages(
+                TARGET, file=InputMediaPoll(poll=event.message.media.poll)
+            )
+        else:
+            mirror_message = await client.forward_messages(TARGET,
+                                                           event.message)
+
+        if mirror_message is not None:
+            db.insert(MirrorMessage(original_id=event.message.id,
+                                    original_channel=event.chat_id,
+                                    mirror_id=mirror_message.id,
+                                    mirror_channel=TARGET))
+        sent += 1
+        if sent > LIMIT_TO_WAIT:
+            sent = 0
+            time.sleep(TIMEOUT_MIRRORING)
 
     except Exception as e:
         logger.error(e, exc_info=True)
 
 
-@client.on(events.MessageEdited(chats=CHATS))
+@client.on(events.MessageEdited())
 async def handler_edit_message(event):
     """MessageEdited event handler.
     """
@@ -119,7 +122,8 @@ async def handler_edit_message(event):
         targets = db.find_by_original_id(event.message.id, event.chat_id)
         if targets is None or len(targets) < 1:
             logger.warning(
-                f'MessageEdited. No target channel for {event.chat_id}')
+                f'MessageEdited. No target channel for {event.chat_id}'
+            )
             return
 
         sent = 0
