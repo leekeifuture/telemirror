@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 
@@ -22,6 +23,8 @@ logger.setLevel(level=LOG_LEVEL)
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 db = Database(DB_URL)
 
+not_muted_chats = []
+
 
 def remove_url_from_message(message):
     message.message = remove_urls(message.message)
@@ -32,7 +35,28 @@ def remove_url_from_message(message):
     return message
 
 
-@client.on(events.Album())
+async def update_not_muted_chats():
+    dialogs = await client.get_dialogs()
+
+    tmp = []
+    for dialog in dialogs:
+        if (dialog.dialog.notify_settings.mute_until is None or
+                dialog.dialog.notify_settings.mute_until.year == 1970):
+            tmp.append(dialog.entity.id)
+
+    global not_muted_chats
+    not_muted_chats = tmp
+
+
+async def check_not_muted_chats():
+    while True:
+        await asyncio.gather(
+            asyncio.sleep(10),
+            update_not_muted_chats(),
+        )
+
+
+@client.on(events.Album(func=lambda e: e.chat_id in not_muted_chats))
 async def handler_album(event):
     """Album event handler.
     """
@@ -73,13 +97,14 @@ async def handler_album(event):
         logger.error(e, exc_info=True)
 
 
-@client.on(events.NewMessage())
+@client.on(events.NewMessage(func=lambda e: e.chat_id in not_muted_chats))
 async def handler_new_message(event):
     """NewMessage event handler.
     """
     # skip if Album
     if hasattr(event, 'grouped_id') and event.grouped_id is not None:
         return
+
     try:
         logger.debug(f'New message from {event.chat_id}:\n{event.message}')
 
@@ -113,7 +138,7 @@ async def handler_new_message(event):
         logger.error(e, exc_info=True)
 
 
-@client.on(events.MessageEdited())
+@client.on(events.MessageEdited(func=lambda e: e.chat_id in not_muted_chats))
 async def handler_edit_message(event):
     """MessageEdited event handler.
     """
@@ -142,6 +167,9 @@ if __name__ == '__main__':
     if client.is_user_authorized():
         me = client.get_me()
         logger.info(f'Connected as {me.username} ({me.phone})')
+
+        asyncio.run(check_not_muted_chats())
+
         client.run_until_disconnected()
     else:
         logger.error('Cannot be authorized')
