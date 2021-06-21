@@ -50,10 +50,8 @@ async def update_not_muted_chats():
 
 async def check_not_muted_chats():
     while True:
-        await asyncio.gather(
-            asyncio.sleep(10),
-            update_not_muted_chats(),
-        )
+        await update_not_muted_chats()
+        await asyncio.sleep(10)
 
 
 @client.on(events.Album(func=lambda e: e.chat_id in not_muted_chats))
@@ -162,14 +160,19 @@ async def handler_edit_message(event):
         logger.error(e, exc_info=True)
 
 
-if __name__ == '__main__':
-    client.start()
-    if client.is_user_authorized():
-        me = client.get_me()
+async def main():
+    await client.start()
+    if await client.is_user_authorized():
+        me = await client.get_me()
         logger.info(f'Connected as {me.username} ({me.phone})')
 
-        asyncio.run(check_not_muted_chats())
-
-        client.run_until_disconnected()
+        await asyncio.gather(
+            check_not_muted_chats(),
+            client.run_until_disconnected()
+        )
     else:
         logger.error('Cannot be authorized')
+
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop().run_until_complete(main())
