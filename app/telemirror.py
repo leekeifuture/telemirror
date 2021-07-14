@@ -42,7 +42,7 @@ async def update_not_muted_chats():
     for dialog in dialogs:
         if (dialog.dialog.notify_settings.mute_until is None or
                 dialog.dialog.notify_settings.mute_until.year == 1970):
-            tmp.append(dialog.entity.id)
+            tmp.append(dialog.id)
 
     global not_muted_chats
     not_muted_chats = tmp
