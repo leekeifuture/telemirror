@@ -151,6 +151,7 @@ async def handler_edit_message(event):
 
         sent = 0
         for chat in targets:
+            await client.send_message(chat.mirror_channel, 'Edit message:')
             await client.forward_messages(chat.mirror_channel, event.message)
             sent += 1
             if sent > LIMIT_TO_WAIT:
