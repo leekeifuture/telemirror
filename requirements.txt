@@ -1,5 +1,13 @@
-pysocks==1.7.1
-telethon==1.18.2
-urlextract==1.2.0
-python-dotenv==0.15.0
+appdirs==1.4.4
+filelock==3.3.0
+idna==3.2
+numpy==1.21.4
 psycopg2-binary==2.8.6
+pyaes==1.6.1
+pyasn1==0.4.8
+PySocks==1.7.1
+python-dotenv==0.15.0
+rsa==4.7.2
+Telethon==1.18.2
+uritools==3.0.2
+urlextract==1.2.0

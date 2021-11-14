@@ -2,9 +2,11 @@ import asyncio
 import logging
 import time
 
+import numpy as np
 from telethon import events
 from telethon.sessions import StringSession
 from telethon.sync import TelegramClient
+from telethon.tl import functions
 from telethon.tl.types import \
     InputMediaPoll, \
     MessageMediaPoll, \
@@ -44,6 +46,19 @@ async def update_not_muted_chats():
                 dialog.dialog.notify_settings.mute_until.year == 1970):
             tmp.append(dialog.id)
 
+    dialog_filters = await client(functions.messages.GetDialogFiltersRequest())
+    for dialog_filter in dialog_filters:
+        if dialog_filter.to_dict().get('title') == 'Personal':
+            for chat in np.asarray(
+                    dialog_filter.to_dict().get('include_peers')):
+                user_id = chat.get('user_id')
+                chat_id = chat.get('chat_id')
+                channel_id = chat.get('channel_id')
+
+                if user_id and user_id not in tmp: tmp.append(user_id)
+                if chat_id and chat_id not in tmp: tmp.append(chat_id)
+                if channel_id and channel_id not in tmp: tmp.append(channel_id)
+
     global not_muted_chats
     not_muted_chats = tmp
 
@@ -56,7 +71,8 @@ async def check_not_muted_chats():
 
 @client.on(events.Album(func=lambda e: e.chat_id in not_muted_chats))
 async def handler_album(event):
-    """Album event handler.
+    """
+        Album event handler.
     """
     try:
         logger.debug(f'New Album from {event.chat_id}:\n{event}')
@@ -97,7 +113,8 @@ async def handler_album(event):
 
 @client.on(events.NewMessage(func=lambda e: e.chat_id in not_muted_chats))
 async def handler_new_message(event):
-    """NewMessage event handler.
+    """
+        NewMessage event handler.
     """
     # skip if Album
     if hasattr(event, 'grouped_id') and event.grouped_id is not None:
@@ -138,7 +155,8 @@ async def handler_new_message(event):
 
 @client.on(events.MessageEdited(func=lambda e: e.chat_id in not_muted_chats))
 async def handler_edit_message(event):
-    """MessageEdited event handler.
+    """
+        MessageEdited event handler.
     """
     try:
         logger.debug(f'Edit message {event.message.id} from {event.chat_id}')
