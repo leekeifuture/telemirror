@@ -25,7 +25,7 @@ logger.setLevel(level=LOG_LEVEL)
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 db = Database(DB_URL)
 
-not_muted_chats = []
+useful_chats = []
 
 
 def remove_url_from_message(message):
@@ -37,7 +37,7 @@ def remove_url_from_message(message):
     return message
 
 
-async def update_not_muted_chats():
+async def update_useful_chats():
     dialogs = await client.get_dialogs()
 
     tmp = []
@@ -49,27 +49,43 @@ async def update_not_muted_chats():
     dialog_filters = await client(functions.messages.GetDialogFiltersRequest())
     for dialog_filter in dialog_filters:
         if dialog_filter.to_dict().get('title') == 'Personal':
-            for chat in np.asarray(
-                    dialog_filter.to_dict().get('include_peers')):
-                user_id = chat.get('user_id')
-                chat_id = chat.get('chat_id')
-                channel_id = chat.get('channel_id')
+            chats = np.asarray(dialog_filter.to_dict().get('include_peers'))
+            for chat in chats:
+                if chat.get('user_id'):
+                    user_id = chat.get('user_id')
+                    if user_id not in tmp:
+                        tmp.append(user_id)
 
-                if user_id and user_id not in tmp: tmp.append(user_id)
-                if chat_id and chat_id not in tmp: tmp.append(chat_id)
-                if channel_id and channel_id not in tmp: tmp.append(channel_id)
+                if chat.get('channel_id'):
+                    channel_id = chat.get('channel_id')
+                    if channel_id not in tmp:
+                        tmp.append(channel_id)
 
-    global not_muted_chats
-    not_muted_chats = tmp
+                if chat.get('chat_id'):
+                    chat_id = chat.get('chat_id')
+                    if chat_id not in tmp:
+                        chat_entity = await client.get_entity(chat_id)
+                        chat_id = -chat_entity.id
+                        tmp.append(chat_id)
+
+    global useful_chats
+    useful_chats = tmp
 
 
-async def check_not_muted_chats():
+async def check_useful_chats():
     while True:
-        await update_not_muted_chats()
+        await update_useful_chats()
         await asyncio.sleep(10)
 
 
-@client.on(events.Album(func=lambda e: e.chat_id in not_muted_chats))
+def check_message(event):
+    if event.chat:
+        return event.chat.id in useful_chats
+
+    return event.chat_id in useful_chats
+
+
+@client.on(events.Album(func=check_message))
 async def handler_album(event):
     """
         Album event handler.
@@ -87,18 +103,18 @@ async def handler_album(event):
         # captions
         caps = []
         # original messages ids
-        original_idxs = []
+        original_ids = []
         for item in event.messages:
             files.append(item.media)
             caps.append(item.message)
-            original_idxs.append(item.id)
+            original_ids.append(item.id)
         sent = 0
 
         mirror_messages = await client.send_file(TARGET, caption=caps,
                                                  file=files)
         if mirror_messages is not None and len(mirror_messages) > 1:
             for idx, m in enumerate(mirror_messages):
-                db.insert(MirrorMessage(original_id=original_idxs[idx],
+                db.insert(MirrorMessage(original_id=original_ids[idx],
                                         original_channel=event.chat_id,
                                         mirror_id=m.id,
                                         mirror_channel=TARGET))
@@ -111,7 +127,7 @@ async def handler_album(event):
         logger.error(e, exc_info=True)
 
 
-@client.on(events.NewMessage(func=lambda e: e.chat_id in not_muted_chats))
+@client.on(events.NewMessage(func=check_message))
 async def handler_new_message(event):
     """
         NewMessage event handler.
@@ -153,7 +169,7 @@ async def handler_new_message(event):
         logger.error(e, exc_info=True)
 
 
-@client.on(events.MessageEdited(func=lambda e: e.chat_id in not_muted_chats))
+@client.on(events.MessageEdited(func=check_message))
 async def handler_edit_message(event):
     """
         MessageEdited event handler.
@@ -186,7 +202,7 @@ async def main():
         logger.info(f'Connected as {me.username} ({me.phone})')
 
         await asyncio.gather(
-            check_not_muted_chats(),
+            check_useful_chats(),
             client.run_until_disconnected()
         )
     else:
