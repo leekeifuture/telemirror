@@ -64,7 +64,10 @@ async def update_useful_chats():
                 if chat.get('chat_id'):
                     chat_id = chat.get('chat_id')
                     if chat_id not in tmp:
-                        chat_entity = await client.get_entity(chat_id)
+                        try:
+                            chat_entity = await client.get_entity(chat_id)
+                        except ValueError:
+                            continue
                         chat_id = -chat_entity.id
                         tmp.append(chat_id)
 
