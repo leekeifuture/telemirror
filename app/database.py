@@ -95,11 +95,11 @@ class Database:
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS binding_id
-                    (   id serial primary key not null,
-                        original_id bigint not null,
-                        original_channel bigint not null,
-                        mirror_id bigint not null,
-                        mirror_channel bigint not null
+                    (   id serial PRIMARY KEY NOT NULL,
+                        original_id bigint NOT NULL,
+                        original_channel bigint NOT NULL,
+                        mirror_id bigint NOT NULL,
+                        mirror_channel bigint NOT NULL
                     )
                     """
                 )
