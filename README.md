@@ -1,6 +1,5 @@
 # Telegram channel mirroring app
 
-
 App helps make telegram channel mirror. We will use Telegram client API because
 Bot API have limited functionality.
 
