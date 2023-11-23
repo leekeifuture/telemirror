@@ -155,8 +155,7 @@ async def handler_new_message(event):
                 TARGET, file=InputMediaPoll(poll=event.message.media.poll)
             )
         else:
-            mirror_message = await client.forward_messages(TARGET,
-                                                           event.message)
+            mirror_message = await client.forward_messages(TARGET, event.message)
 
         if mirror_message is not None:
             db.insert(MirrorMessage(original_id=event.message.id,
